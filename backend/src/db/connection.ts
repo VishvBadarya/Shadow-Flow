@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+import { SCHEMA_SQL } from './schemaSql.js';
 
 dotenv.config();
 
@@ -91,6 +92,10 @@ export function getDb(): IDatabase {
 
 export async function initDatabaseSchema(): Promise<void> {
   const db = getDb();
+  if (SCHEMA_SQL && SCHEMA_SQL.trim() !== '') {
+    await db.exec(SCHEMA_SQL);
+    return;
+  }
   const schemaPath = path.resolve(__dirname, 'schema.sql');
   const schemaSql = fs.readFileSync(schemaPath, 'utf8');
   await db.exec(schemaSql);
