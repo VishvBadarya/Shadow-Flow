@@ -1,8 +1,8 @@
 # Dependencies
 node_modules/
 
-# Build output
-dist/
+# Build output (tracked for zero-setup deployments on Render/Railway)
+# dist/
 
 # Environment files
 .env

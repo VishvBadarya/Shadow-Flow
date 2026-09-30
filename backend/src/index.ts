@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { authMiddleware } from './middleware/auth.js';
 import { auditMiddleware } from './middleware/audit.js';
@@ -52,22 +53,25 @@ app.use('/api', apiRouter);
 // Place the built frontend dist folder at ../frontend/dist relative to
 // the backend project root, or set FRONTEND_DIST_PATH env var.
 // -------------------------------------------------------------------
-if (process.env.NODE_ENV === 'production') {
-  const distPath = process.env.FRONTEND_DIST_PATH
-    || path.resolve(__dirname, '../../frontend/dist');
+// -------------------------------------------------------------------
+// Static Frontend Serving (if frontend dist exists)
+// -------------------------------------------------------------------
+const distPath = process.env.FRONTEND_DIST_PATH
+  || path.resolve(__dirname, '../../frontend/dist');
+const hasFrontendDist = fs.existsSync(path.join(distPath, 'index.html'));
 
+if (hasFrontendDist) {
   app.use(express.static(distPath));
 
   // SPA fallback: serve index.html for all non-API routes
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api') && !req.path.startsWith('/auth') && !req.path.startsWith('/health')) {
-      res.sendFile(path.join(distPath, 'index.html'));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/auth') || req.path.startsWith('/health')) {
+      return next();
     }
+    res.sendFile(path.join(distPath, 'index.html'));
   });
-}
-
-// Root landing endpoint (development mode only)
-if (process.env.NODE_ENV !== 'production') {
+} else {
+  // Root landing endpoint (when backend runs as standalone API)
   app.get('/', (req, res) => {
     if (req.accepts('html')) {
       res.send(`
@@ -186,8 +190,8 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Health check endpoint
-app.get('/health', (req, res) => {
+// Health check endpoints
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({
     status: 'HEALTHY',
     service: 'MediCare Nexus API Engine',
